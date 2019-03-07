@@ -105,3 +105,6 @@ venv.bak/
 
 # ide
 .idea/
+
+# temp files
+temp/
