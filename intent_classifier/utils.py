@@ -14,7 +14,7 @@ class DataBunch(Bunch):
                          intents=intents)
 
 
-def load_mysql(configs: dict):
+def load_from_mysql(configs: dict):
     """
     Load intent dataset from mysql database.
 
