@@ -20,7 +20,7 @@ def load_mysql(configs: dict):
 
     Parameters
     ----------
-    config: Configs of mysql connnection, which includes keys:
+    configs: Configs of mysql connnection, which includes keys:
         "host" - host of database,
         "port" - port of database
         "user" - user of database,
