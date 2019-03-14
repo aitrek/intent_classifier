@@ -7,11 +7,8 @@ from sklearn.utils import Bunch
 
 class DataBunch(Bunch):
 
-    def __init__(self, texts: np.array, extended_features: np.array,
-                 intents: np.array):
-        super().__init__(texts=texts,
-                         extended_features=extended_features,
-                         intents=intents)
+    def __init__(self, texts: np.array, contexts: np.array, intents: np.array):
+        super().__init__(texts=texts, contexts=contexts, intents=intents)
 
 
 def load_from_mysql(configs: dict):
@@ -33,8 +30,7 @@ def load_from_mysql(configs: dict):
     -------
     Sklearn Bunch instance, including attributes:
     text - string sentences
-    extended_feature - string in json format to offer
-                       extended features of context
+    context - string in json format to offer extended features of context
     intent - string, intent name in form of multi-levels,
              such as "news/sports/football"
 
@@ -45,28 +41,28 @@ def load_from_mysql(configs: dict):
         assert key in ["host", "port", "user", "password", "db", "table"]
 
     texts = []
-    efs = []
+    contexts = []
     intents = []
 
     db = pymysql.connect(**configs)
     cursor = db.cursor()
-    sql = "select text, extended_feature, intent " \
+    sql = "select text, context, intent " \
           "from {db}.{table} " \
           "where in_use=1".\
         format(db=configs["db"], table=configs["table"])
 
-    for text, ef, intent in cursor.execute(sql):
+    for text, context, intent in cursor.execute(sql):
         if not intent:
             continue
-        if not text and not ef:
+        if not text and not context:
             continue
         texts.append(text) if text else texts.append("")
-        efs.append(ef) if ef else efs.append("{}")
+        contexts.append(context) if context else context.append("{}")
         intents.append(intent)
 
     cursor.close()
     db.close()
 
     return DataBunch(texts=np.array(texts, dtype=np.str),
-                     extended_features=np.array(efs, dtype=np.str),
+                     contexts=np.array(contexts, dtype=np.str),
                      intents=np.array(intents, dtype=np.str))
