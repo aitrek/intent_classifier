@@ -9,8 +9,8 @@ from sklearn.utils import Bunch
 
 class DataBunch(Bunch):
 
-    def __init__(self, texts: np.array, contexts: np.array, intents: np.array):
-        super().__init__(texts=texts, contexts=contexts, intents=intents)
+    def __init__(self, words: np.array, contexts: np.array, intents: np.array):
+        super().__init__(words=words, contexts=contexts, intents=intents)
 
 
 def load_from_mysql(configs: dict):
@@ -31,7 +31,7 @@ def load_from_mysql(configs: dict):
     Returns
     -------
     Sklearn Bunch instance, including attributes:
-    text - string sentences
+    words - strings, user's words
     context - string in json format to offer extended features of context
     intent - string, intent name in form of multi-levels,
              such as "news/sports/football"
@@ -42,30 +42,30 @@ def load_from_mysql(configs: dict):
     for key in configs:
         assert key in ["host", "port", "user", "password", "db", "table"]
 
-    texts = []
+    words = []
     contexts = []
     intents = []
 
     db = pymysql.connect(**configs)
     cursor = db.cursor()
-    sql = "select text, context, intent " \
+    sql = "select word, context, intent " \
           "from {db}.{table} " \
           "where in_use=1".\
         format(db=configs["db"], table=configs["table"])
 
-    for text, context, intent in cursor.execute(sql):
+    for word, context, intent in cursor.execute(sql):
         if not intent:
             continue
-        if not text and not context:
+        if not word and not context:
             continue
-        texts.append(text) if text else texts.append("")
+        words.append(word) if word else words.append("")
         contexts.append(context) if context else context.append("{}")
         intents.append(intent)
 
     cursor.close()
     db.close()
 
-    return DataBunch(texts=np.array(texts, dtype=np.str),
+    return DataBunch(words=np.array(words, dtype=np.str),
                      contexts=np.array(contexts, dtype=np.str),
                      intents=np.array(intents, dtype=np.str))
 
