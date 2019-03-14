@@ -2,6 +2,8 @@
 
 import numpy as np
 
+from typing import Dict, Set
+
 from sklearn.utils import Bunch
 
 
@@ -66,3 +68,61 @@ def load_from_mysql(configs: dict):
     return DataBunch(texts=np.array(texts, dtype=np.str),
                      contexts=np.array(contexts, dtype=np.str),
                      intents=np.array(intents, dtype=np.str))
+
+
+def get_intent_classes(intents) -> Dict[str, Set[str]]:
+    """
+    Disassemble intents in form of multi-levels to intents of diferent levels.
+
+    Examples:
+        Intents:
+            [
+                "news/sports_news/football",
+                "news/sports_news/basketball",
+                "news/sports_news/others",
+                "news/tech_news",
+                "news/social_news",
+                "travel/culture",
+                "travel/food",
+                "shop/clothes",
+                "chat/greeting",
+                "chat/others",
+                "confirm",
+                "unconfirm",
+                "others"
+            ]
+
+        Disassembled class dict:
+            {
+                "root": {"news", "travel", "shop", "chat", "confirm", "unconfirm", "others"},
+                "news": {"news/sports_news", "news/tech_news", "news/social_news"},
+                "news/sports_news": {"news/sports_news/football", "news/sports_news/basketball"},
+                "travel": {"travel/culture", "travel/food"},
+                "shop": {"shop/clothes"},
+                "chat": {"chat/greeting", "chat/others"},
+            }
+
+    Parameters
+    ----------
+    intents: array-like intent strings
+
+    Returns
+    -------
+    Disassembled class list.
+
+    """
+    assert len(intents) > 0, "intents is empty!"
+
+    cls = {"root": set()}
+    for intent in intents:
+        levels = intent.split("/")
+        name = levels[0]
+        cls["root"].add(name)
+        for level in levels[1:]:
+            if name not in cls:
+                cls[name] = set()
+            new_name = name + "/" + level
+            cls[name].add(new_name)
+            name = new_name
+
+    return cls
