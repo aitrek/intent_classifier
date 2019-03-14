@@ -40,7 +40,8 @@ def load_from_mysql(configs: dict) -> DataBunch:
     import pymysql
 
     for key in configs:
-        assert key in ["host", "port", "user", "password", "db", "table"]
+        assert key in ["host", "port", "user", "password", "db", "table"], \
+            "mysql configs error!"
 
     words = []
     contexts = []
@@ -58,9 +59,9 @@ def load_from_mysql(configs: dict) -> DataBunch:
             continue
         if not word and not context:
             continue
-        words.append(word) if word else words.append("")
-        contexts.append(context) if context else context.append("{}")
-        intents.append(intent)
+        words.append(word.lower()) if word else words.append("")
+        contexts.append(context.lower()) if context else context.append("{}")
+        intents.append(intent.lower())
 
     cursor.close()
     db.close()
