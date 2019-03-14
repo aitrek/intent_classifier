@@ -13,7 +13,7 @@ class DataBunch(Bunch):
         super().__init__(words=words, contexts=contexts, intents=intents)
 
 
-def load_from_mysql(configs: dict):
+def load_from_mysql(configs: dict) -> DataBunch:
     """
     Load intent dataset from mysql database.
 
