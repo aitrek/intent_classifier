@@ -4,13 +4,7 @@ import numpy as np
 
 from typing import Dict, Set
 
-from sklearn.utils import Bunch
-
-
-class DataBunch(Bunch):
-
-    def __init__(self, words: np.array, contexts: np.array, intents: np.array):
-        super().__init__(words=words, contexts=contexts, intents=intents)
+from .base import DataBunch
 
 
 def load_from_mysql(configs: dict) -> DataBunch:
