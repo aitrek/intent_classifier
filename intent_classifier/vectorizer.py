@@ -1,26 +1,10 @@
 """Self-defined vectorizer"""
 
-import json
-
 import numpy as np
 
 from typing import List
 
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-
-class JsonDictVectorizer(DictVectorizer):
-    """Subclass of DictVectorizer to support json string"""
-
-    def fit(self, X, y=None):
-        return super().fit([json.loads(x) for x in X], y)
-
-    def fit_transform(self, X, y=None):
-        return super().fit_transform([json.loads(x) for x in X], y)
-
-    def transform(self, X):
-        return super().transform([json.loads(x) for x in X])
 
 
 class TfidfVectorizerWithEntity(TfidfVectorizer):
@@ -101,6 +85,3 @@ class TfidfVectorizerWithEntity(TfidfVectorizer):
 
     def transform(self, raw_documents, copy=True):
         return super().transform(self._mixed_documents(raw_documents), copy)
-
-
-
