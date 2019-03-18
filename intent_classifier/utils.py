@@ -20,7 +20,8 @@ def load_from_mysql(configs: dict) -> DataBunch:
         "password" - password to login the database,
         "db" - database name of the dataset,
         "table" - table name of the dataset,
-        "charset" - charset of the dataset, default value "utf8".
+        "charset" - charset of the dataset, default value "utf8",
+        "customer" - the customer's name.
 
     Returns
     -------
@@ -43,10 +44,17 @@ def load_from_mysql(configs: dict) -> DataBunch:
 
     db = pymysql.connect(**configs)
     cursor = db.cursor()
-    sql = "select word, context, intent " \
-          "from {db}.{table} " \
-          "where in_use=1".\
-        format(db=configs["db"], table=configs["table"])
+    if configs.get("customer"):
+        sql = "select word, context, intent " \
+              "from {db}.{table} " \
+              "where in_use=1 and customer in ('common', '{customer}')". \
+            format(db=configs["db"], table=configs["table"],
+                   costomer=configs["customer"])
+    else:
+        sql = "select word, context, intent " \
+              "from {db}.{table} " \
+              "where in_use=1 and customer='common'". \
+            format(db=configs["db"], table=configs["table"])
 
     for word, context, intent in cursor.execute(sql):
         if not intent:
@@ -65,9 +73,10 @@ def load_from_mysql(configs: dict) -> DataBunch:
                      intents=np.array(intents, dtype=np.str))
 
 
-def get_intent_classes(intents) -> Dict[str, Set[str]]:
+def get_intent_labels(intents) -> Dict[str, Set[str]]:
     """
-    Disassemble intents in form of multi-levels to intents of diferent levels.
+    Disassemble intent labels in form of multi-levels to labels
+    with diferent levels.
 
     Examples:
         Intents:

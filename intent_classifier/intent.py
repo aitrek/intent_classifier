@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 
 from .base import DataBunch, OneClassClassifier
-from .utils import get_intent_classes
+from .utils import get_intent_labels
 from .vectorizer import TfidfVectorizerWithEntity
 
 
@@ -71,7 +71,7 @@ class Intent:
         data_bunch: Data bunch instance with texts, extended_features, intents.
 
         """
-        intent_classes = get_intent_classes(data_bunch.intents)
+        intent_classes = get_intent_labels(data_bunch.intents)
         for clf_name, cls in intent_classes.items():
             choices = np.char.startswith(cls, clf_name)
             classes = np.unique(data_bunch.intents[choices])
