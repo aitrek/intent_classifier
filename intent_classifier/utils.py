@@ -36,15 +36,15 @@ def load_from_mysql(configs: dict) -> DataBunch:
     """
     import pymysql
 
-    for key in configs:
-        assert key in ["host", "port", "user", "password", "db", "table"], \
-            "mysql configs error!"
+    for key in ["host", "port", "user", "password", "db", "table"]:
+        assert key in configs, "mysql configs error!"
 
     words = []
     contexts = []
     intents = []
 
-    db = pymysql.connect(**configs)
+    db = pymysql.connect(host=configs["host"], port=configs["port"],
+                         user=configs["user"], password=configs["password"])
     cursor = db.cursor()
     customer = configs.get("customer")
     if customer and customer != "common":
@@ -59,13 +59,14 @@ def load_from_mysql(configs: dict) -> DataBunch:
               "where in_use=1 and customer='common'". \
             format(db=configs["db"], table=configs["table"])
 
-    for word, context, intent in cursor.execute(sql):
+    cursor.execute(sql)
+    for word, context, intent in cursor.fetchall():
         if not intent:
             continue
         if not word and not context:
             continue
         words.append(word.lower()) if word else words.append("")
-        contexts.append(context.lower()) if context else context.append("{}")
+        contexts.append(context.lower()) if context else contexts.append("{}")
         intents.append(intent.lower())
 
     cursor.close()
