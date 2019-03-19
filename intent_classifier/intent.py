@@ -20,6 +20,8 @@ from sklearn.ensemble import RandomForestClassifier
 from .base import DataBunch, OneClassClassifier
 from .utils import get_intent_labels
 from .vectorizer import TfidfVectorizerWithEntity
+from .preprocess import en_preprocessor, cn_preprocessor
+from .transformer import TextPreprocess
 
 
 DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
@@ -28,13 +30,14 @@ DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
 class Intent:
 
     def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
-                 ner=None):
+                 preprocessor=en_preprocessor, ner=None):
         """
 
         Parameters
         ----------
         folder: The folder to save the final models.
         customer: Name used to distinguish different customers.
+        preprocessor: Preprocessor to standardize text.
         ner: instance of named entity recognition.
             Its output, taking "Allen like cake." for example,
             should be a list in form:
@@ -45,6 +48,7 @@ class Intent:
         """
         self._folder = folder
         self._customer = customer
+        self._preprocessor = preprocessor
         self._ner = ner
         self._classifiers = {}
         self._mlbs = {}
@@ -113,7 +117,13 @@ class Intent:
             # transform words and contexts to vectors
             ("vectorizer", ColumnTransformer([
                 # words to vectors
-                ("words2vect", TfidfVectorizerWithEntity(ner=self._ner), 0),
+                ("words2vect",
+                 Pipeline([
+                     ("text_preprocess", TextPreprocess(self._preprocessor)),
+                     ("tfidf_vect", TfidfVectorizerWithEntity(ner=self._ner))
+                 ]),
+
+                 0),
                 # contexts to vectors
                 ("contexts2vect", DictVectorizer(), 1)])
             ),
