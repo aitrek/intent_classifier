@@ -27,18 +27,14 @@ DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
 
 class Intent:
 
-    def __init__(self, customer: str="common", folder: str=None, id: str=None,
+    def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
                  ner=None):
         """
 
         Parameters
         ----------
+        folder: The folder to save the final models.
         customer: Name used to distinguish different customers.
-        folder: The folder to save the final models, which default value is
-            DEFAULT_FOLDER.
-        id: Intent id to distinguish different batch of models, which
-            default value comes from the training date time, such as
-            "20190313110145".
         ner: instance of named entity recognition.
             Its output, taking "Allen like cake." for example,
             should be a list in form:
@@ -47,18 +43,11 @@ class Intent:
                 {'value': 'cake', 'type': 'food', 'start': 11, 'end': 15}
             ]
         """
+        self._folder = folder
         self._customer = customer
-        self._folder = folder if folder else DEFAULT_FOLDER
+        self._ner = ner
         self._classifiers = {}
         self._mlbs = {}
-        if self._check_id(id):
-            self._id = id
-            self._load()
-        else:
-            self._id = (str(datetime.datetime.now())
-                        .replace(" ", "").replace("-", "").replace(":", "")
-                        .split("."))[0]
-        self._ner = ner
 
     def fit(self, data_bunch: DataBunch):
         """
@@ -71,20 +60,38 @@ class Intent:
         data_bunch: Data bunch instance with texts, extended_features, intents.
 
         """
-        intent_classes = get_intent_labels(data_bunch.intents)
-        for clf_name, cls in intent_classes.items():
-            choices = np.char.startswith(cls, clf_name)
-            classes = np.unique(data_bunch.intents[choices])
-            # todo report
-            if len(classes) == 1:
-                self._classifiers[clf_name] = OneClassClassifier(clf_name)
+        def make_choice(labels: str, prefixs: set) -> bool:
+            for label in labels.replace(" ", "").split(","):
+                for prefix in prefixs:
+                    if label.startswith(prefix):
+                        return True
             else:
-                mlb = MultiLabelBinarizer(classes=classes)
+                return False
+
+        def make_labels(labels_data: np.array, label_set: set) -> List[List[str]]:
+            labels = []
+            for labels_str in labels_data:
+                lbls = []
+                for label in labels_str.replace(" ", "").split(","):
+                    lbls += [lbl for lbl in label_set if label.startswith(lbl)]
+                labels.append(lbls)
+            return labels
+
+        make_choice_vect = np.vectorize(make_choice)
+        for clf_name, label_set in get_intent_labels(data_bunch.intents).items():
+            # todo report
+            if len(label_set) == 1:
+                self._classifiers[clf_name] = \
+                    OneClassClassifier(list(label_set)[0])
+            else:
+                choices = make_choice_vect(data_bunch.intents, label_set)
+                mlb = MultiLabelBinarizer(classes=label_set)
                 self._classifiers[clf_name] = self._fit(
                     X=(data_bunch.words[choices],                   # np.array
                        [json.loads(c) if c else {}
                         for c in data_bunch.contexts[choices]]),    # List[dict]
-                    y=mlb.fit_transform(data_bunch.intents[choices])
+                    y=mlb.fit_transform(
+                        make_labels(data_bunch.intents[choices], label_set))
                 )
                 self._mlbs[clf_name] = mlb
 
@@ -202,20 +209,55 @@ class Intent:
             return os.path.isfile(
                 os.path.join(self._folder, self._customer, id) + ".models")
 
-    def _load(self):
-        """Load classifiers according to initialized parameters"""
-        models = joblib.load(
-            os.path.join(self._folder, self._customer, self._id) + ".models"
-        )
-        self._classifiers = models["clfs"]
-        self._mlbs = models["mlbs"]
-
-    def _dump(self):
+    def load(self, clf_id: str=None):
         """
-        Save classifiers in self._folder/self._cumstomer/self._id + ".models"
+
+        Parameters
+        ----------
+        clf_id: Classifier id, which comes from the training date time,
+            such as "20190313110145". If it is None, the model with maximum
+            id will be loaded.
+
+        """
+        def max_model_id(model_folder) -> str:
+            max_id = 0
+            for f in os.listdir(model_folder):
+                if not os.path.isdir(os.path.join(model_folder, f)):
+                    continue
+                else:
+                    dir_name = f.split("/")[-1]
+                    if dir_name.isdigit():
+                        dir_num = int(dir_name)
+                        if dir_num > max_id:
+                            max_id = dir_num
+            return str(max_id)
+
+        clf_dir = os.path.join(self._folder, self._customer)
+        if clf_id:
+            assert os.path.isfile(os.path.join(clf_dir, clf_id, "intent.model")), \
+                "clf_id error!"
+        else:
+            clf_id = max_model_id(clf_dir)
+
+        model = joblib.load((os.path.join(clf_dir, clf_id, "intent.model")))
+
+        self._classifiers = model["clfs"]
+        self._mlbs = model["mlbs"]
+
+    def dump(self):
+        """
+        Save classifiers in self._folder/self._cumstomer/self._id + ".model"
         """
         clf_dir = os.path.join(self._folder, self._customer)
         if not os.path.isdir(clf_dir):
             os.mkdir(clf_dir)
+
+        clf_id = (str(datetime.datetime.now())
+                  .replace(" ", "").replace("-", "").replace(":", "")
+                  .split("."))[0]
+        clf_dir = os.path.join(clf_dir, clf_id)
+        if not os.path.isdir(clf_dir):
+            os.mkdir(clf_dir)
+
         joblib.dump({"clfs": self._classifiers, "mlbs": self._mlbs},
-                    clf_dir + self._id + ".models")
+                    os.path.join(clf_dir, "intent.model"))
