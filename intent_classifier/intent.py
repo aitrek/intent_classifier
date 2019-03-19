@@ -6,6 +6,7 @@ import datetime
 
 import joblib
 import numpy as np
+import pandas as pd
 
 from typing import Tuple, List
 
@@ -30,14 +31,14 @@ DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
 class Intent:
 
     def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
-                 preprocessor=en_preprocessor, ner=None):
+                 lang="en", ner=None):
         """
 
         Parameters
         ----------
         folder: The folder to save the final models.
         customer: Name used to distinguish different customers.
-        preprocessor: Preprocessor to standardize text.
+        lang: Language, "en" for English or "cn" for Chinese.
         ner: instance of named entity recognition.
             Its output, taking "Allen like cake." for example,
             should be a list in form:
@@ -48,7 +49,7 @@ class Intent:
         """
         self._folder = folder
         self._customer = customer
-        self._preprocessor = preprocessor
+        self._lang = lang
         self._ner = ner
         self._classifiers = {}
         self._mlbs = {}
@@ -89,17 +90,18 @@ class Intent:
                     OneClassClassifier(list(label_set)[0])
             else:
                 choices = make_choice_vect(data_bunch.intents, label_set)
-                mlb = MultiLabelBinarizer(classes=label_set)
+                mlb = MultiLabelBinarizer(classes=list(label_set))
                 self._classifiers[clf_name] = self._fit(
-                    X=(data_bunch.words[choices],                   # np.array
-                       [json.loads(c) if c else {}
-                        for c in data_bunch.contexts[choices]]),    # List[dict]
+                    X=pd.DataFrame({
+                        "words": data_bunch.words[choices],
+                        "contexts": [json.loads(c) if c else {}
+                            for c in data_bunch.contexts[choices]]}),
                     y=mlb.fit_transform(
                         make_labels(data_bunch.intents[choices], label_set))
                 )
                 self._mlbs[clf_name] = mlb
 
-    def _fit(self, X: Tuple[np.array, List[dict]], y: np.array):
+    def _fit(self, X: pd.DataFrame, y: np.array):
         """Fit classifier
 
         Parameters
@@ -119,13 +121,13 @@ class Intent:
                 # words to vectors
                 ("words2vect",
                  Pipeline([
-                     ("text_preprocess", TextPreprocess(self._preprocessor)),
+                     ("text_preprocess", TextPreprocess(self._lang)),
                      ("tfidf_vect", TfidfVectorizerWithEntity(ner=self._ner))
                  ]),
 
-                 0),
+                 "words"),
                 # contexts to vectors
-                ("contexts2vect", DictVectorizer(), 1)])
+                ("contexts2vect", DictVectorizer(), "contexts")])
             ),
 
             # feature values standardization
@@ -243,6 +245,7 @@ class Intent:
             return str(max_id)
 
         clf_dir = os.path.join(self._folder, self._customer)
+        assert os.path.isdir(clf_dir), "The model's folder doesn't exists!"
         if clf_id:
             assert os.path.isfile(os.path.join(clf_dir, clf_id, "intent.model")), \
                 "clf_id error!"

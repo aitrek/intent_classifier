@@ -4,7 +4,7 @@ import json
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from .preprocess import Preprocessor
+from .preprocess import en_preprocessor, cn_preprocessor
 
 
 class Json2Dict(BaseEstimator, TransformerMixin):
@@ -20,11 +20,14 @@ class Json2Dict(BaseEstimator, TransformerMixin):
 class TextPreprocess(BaseEstimator, TransformerMixin):
     """Preprocess text"""
 
-    def __init__(self, preprocessor: Preprocessor):
-        self.preprocessor = preprocessor
+    def __init__(self, lang: str="en"):
+        self.lang = lang
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, X):
-        return [self.preprocessor.process(x) for x in X]
+        if self.lang == "cn":
+            return [en_preprocessor.process(x) for x in X]
+        else:
+            return [cn_preprocessor.process(x) for x in X]
