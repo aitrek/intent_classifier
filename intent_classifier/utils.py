@@ -28,8 +28,10 @@ def load_from_mysql(configs: dict) -> DataBunch:
     Sklearn Bunch instance, including attributes:
     words - strings, user's words
     context - string in json format to offer extended features of context
-    intent - string, intent name in form of multi-levels,
-             such as "news/sports/football"
+    intent_labels - string, intent name in form of multi-levels
+        separated with "," for multi-labels, such as
+        "news/sports/football,person/story", which means labels
+        "news/sports/football" and "person/story".
 
     """
     import pymysql
@@ -45,13 +47,13 @@ def load_from_mysql(configs: dict) -> DataBunch:
     db = pymysql.connect(**configs)
     cursor = db.cursor()
     if configs.get("customer"):
-        sql = "select word, context, intent " \
+        sql = "select word, context, intent_labels " \
               "from {db}.{table} " \
               "where in_use=1 and customer in ('common', '{customer}')". \
             format(db=configs["db"], table=configs["table"],
                    costomer=configs["customer"])
     else:
-        sql = "select word, context, intent " \
+        sql = "select word, context, intent_labels " \
               "from {db}.{table} " \
               "where in_use=1 and customer='common'". \
             format(db=configs["db"], table=configs["table"])
@@ -73,18 +75,18 @@ def load_from_mysql(configs: dict) -> DataBunch:
                      intents=np.array(intents, dtype=np.str))
 
 
-def get_intent_labels(intents) -> Dict[str, Set[str]]:
+def get_intent_labels(labels_data: np.array) -> Dict[str, Set[str]]:
     """
     Disassemble intent labels in form of multi-levels to labels
     with diferent levels.
 
     Examples:
-        Intents:
+        Intent labelss:
             [
                 "news/sports_news/football",
                 "news/sports_news/basketball",
                 "news/sports_news/others",
-                "news/tech_news",
+                "news/tech_news, news/social_news", # multi-labels
                 "news/social_news",
                 "travel/culture",
                 "travel/food",
@@ -112,21 +114,22 @@ def get_intent_labels(intents) -> Dict[str, Set[str]]:
 
     Returns
     -------
-    Disassembled class list.
+    Disassembled class labels.
 
     """
-    assert len(intents) > 0, "intents is empty!"
+    assert len(labels_data) > 0, "intents is empty!"
 
-    cls = {"root": set()}
-    for intent in intents:
-        levels = intent.split("/")
-        name = levels[0]
-        cls["root"].add(name)
-        for level in levels[1:]:
-            if name not in cls:
-                cls[name] = set()
-            new_name = name + "/" + level
-            cls[name].add(new_name)
-            name = new_name
+    intent_labels = {"root": set()}
+    for labels_str in labels_data:
+        for label in labels_str.replace(" ", "").split(","):
+            levels = label.split("/")
+            name = levels[0]
+            intent_labels["root"].add(name)
+            for level in levels[1:]:
+                if name not in intent_labels:
+                    intent_labels[name] = set()
+                new_name = name + "/" + level
+                intent_labels[name].add(new_name)
+                name = new_name
 
-    return cls
+    return intent_labels
