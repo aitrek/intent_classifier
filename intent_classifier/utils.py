@@ -46,12 +46,13 @@ def load_from_mysql(configs: dict) -> DataBunch:
 
     db = pymysql.connect(**configs)
     cursor = db.cursor()
-    if configs.get("customer"):
+    customer = configs.get("customer")
+    if customer and customer != "common":
         sql = "select word, context, intent_labels " \
               "from {db}.{table} " \
               "where in_use=1 and customer in ('common', '{customer}')". \
             format(db=configs["db"], table=configs["table"],
-                   costomer=configs["customer"])
+                   customer=customer)
     else:
         sql = "select word, context, intent_labels " \
               "from {db}.{table} " \
