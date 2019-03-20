@@ -1,5 +1,6 @@
 """Class for intent dataset"""
 
+import os
 import numpy as np
 
 from typing import Dict, Set
@@ -63,3 +64,21 @@ def get_intent_labels(labels_data: np.array) -> Dict[str, Set[str]]:
                 name = new_name
 
     return intent_labels
+
+
+def make_dir(abs_path: str):
+    """
+    Create a directory with deep path.
+
+    Parameters
+    ----------
+    abs_path: absolute path of directory.
+
+    """
+    dir_path = "/"
+    for path in abs_path.split("/"):
+        dir_path = os.path.join(dir_path, path)
+        if os.path.isdir(dir_path):
+            continue
+        else:
+            os.mkdir(dir_path)
