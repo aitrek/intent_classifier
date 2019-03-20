@@ -43,8 +43,8 @@ class PercentSVD(TruncatedSVD):
                          random_state=random_state, tol=tol)
         self.percent = percent
 
-    def _calc_n_components(self, toatl_components: int):
-        return math.ceil(toatl_components * self.percent)
+    def _calc_n_components(self, total_components: int):
+        return math.ceil((total_components - 1) * self.percent)
 
     def fit_transform(self, X, y=None):
         self.n_components = self._calc_n_components(X.shape[1])
