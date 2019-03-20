@@ -207,6 +207,7 @@ class Intent:
         else:
             for labels in self._mlbs[intent].inverse_transform(
                     self._classifiers[intent].predict(X)):
+
                 for label in labels:
                     if intent == "root":
                         intent_label = label
@@ -271,7 +272,9 @@ class Intent:
             return str(max_id)
 
         clf_dir = os.path.join(self._folder, self._customer)
+
         assert os.path.isdir(clf_dir), "The model's folder doesn't exists!"
+
         if clf_id:
             assert os.path.isfile(os.path.join(clf_dir, clf_id, "intent.model")), \
                 "clf_id error!"
@@ -291,6 +294,8 @@ class Intent:
                   .replace(" ", "").replace("-", "").replace(":", "")
                   .split("."))[0]
         clf_dir = os.path.join(self._folder, self._customer, clf_id)
+
         make_dir(clf_dir)
+
         joblib.dump({"clfs": self._classifiers, "mlbs": self._mlbs},
                     os.path.join(clf_dir, "intent.model"))
