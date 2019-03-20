@@ -8,21 +8,19 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from typing import Tuple, List
+from typing import List
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
-from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 
 from .base import DataBunch, OneClassClassifier
-from .utils import get_intent_labels
+from .utils import get_intent_labels, make_dir
 from .vectorizer import TfidfVectorizerWithEntity
-from .preprocess import en_preprocessor, cn_preprocessor
-from .transformer import TextPreprocess
+from .transformer import TextPreprocess, PercentSVD
 
 
 DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
@@ -115,9 +113,17 @@ class Intent:
         Instance of sklearn classifier or OneClassClassifier.
 
         """
-        pipeline = Pipeline([
-            # transform words and contexts to vectors
-            ("vectorizer", ColumnTransformer([
+        def has_context(contexts):
+            for context in contexts:
+                if not context:
+                    continue
+                if json.loads(context):
+                    return True
+            else:
+                return False
+
+        if has_context(X["contexts"]):
+            vectorizer = ColumnTransformer([
                 # words to vectors
                 ("words2vect",
                  Pipeline([
@@ -127,22 +133,37 @@ class Intent:
 
                  "words"),
                 # contexts to vectors
-                ("contexts2vect", DictVectorizer(), "contexts")])
-            ),
+                ("contexts2vect", DictVectorizer(), "contexts")
+            ])
+        else:
+            vectorizer = ColumnTransformer([
+                # words to vectors
+                ("words2vect",
+                 Pipeline([
+                     ("text_preprocess", TextPreprocess(self._lang)),
+                     ("tfidf_vect", TfidfVectorizerWithEntity(ner=self._ner))
+                 ]),
+                 "words")
+            ])
+
+        pipeline = Pipeline([
+            # transform words and contexts to vectors
+            ("vectorizer", vectorizer),
 
             # feature values standardization
-            ("scaler", StandardScaler()),
+            ("scaler", StandardScaler(with_mean=False)),
 
             # dimensionality reduction
-            ("pca", PCA(n_components="mle")),
+            ("svd", PercentSVD()),
 
             # classifier
             ("clf", RandomForestClassifier())
         ])
         params = {
+            "svd__percent": np.linspace(0.1, 1, 3),     # todo
             "clf__n_estimators": range(5, 100, 5),
             "clf__max_features": [None, "sqrt", "log2"],
-            "clf__class_weight": ["balanced", "balanced_subsample"]
+            "clf__class_weight": ["balanced", "balanced_subsample"],
         }
         search = GridSearchCV(estimator=pipeline, param_grid=params, cv=5)
         search.fit(X, y)
@@ -162,17 +183,17 @@ class Intent:
         List of predicted labels.
 
         """
-        return self._predict("root", word, context)
+        X = pd.DataFrame({"words": [word], "contexts": [context]})
+        return self._predict("root", X)
 
-    def _predict(self, intent: str, word: str="", context: dict=None) -> List[str]:
+    def _predict(self, intent: str, X: pd.DataFrame) -> List[str]:
         """
         Predict labels using classifiers and multilabelbinarizers.
 
         Parameters
         ----------
         intent: intent name
-        word: user input
-        context: context information
+        X: word and context in form of pd.Dataframe
 
         Returns
         -------
@@ -182,15 +203,20 @@ class Intent:
         intent_labels = []
         if isinstance(self._classifiers[intent], OneClassClassifier):
             intent_labels.append(
-                self._classifiers[intent].predict(word, context))
+                self._classifiers[intent].predict(X))
         else:
-            for name in self._mlbs[intent].inverse_transform(
-                    self._classifiers[intent].predict(word, context)):
-                intent_label = intent + "/" + name
-                if intent_label in self._classifiers:
-                    intent_labels += self._predict(intent_label, word, context)
-                else:
-                    intent_labels.append(intent_label)
+            for labels in self._mlbs[intent].inverse_transform(
+                    self._classifiers[intent].predict(X)):
+                for label in labels:
+                    if intent == "root":
+                        intent_label = label
+                    else:
+                        intent_label = intent + "/" + label
+
+                    if "root/" + intent_label in self._classifiers:
+                        intent_labels += self._predict(intent_label, X)
+                    else:
+                        intent_labels.append(intent_label)
 
         return intent_labels
 
@@ -261,16 +287,10 @@ class Intent:
         """
         Save classifiers in self._folder/self._cumstomer/self._id + ".model"
         """
-        clf_dir = os.path.join(self._folder, self._customer)
-        if not os.path.isdir(clf_dir):
-            os.mkdir(clf_dir)
-
         clf_id = (str(datetime.datetime.now())
                   .replace(" ", "").replace("-", "").replace(":", "")
                   .split("."))[0]
-        clf_dir = os.path.join(clf_dir, clf_id)
-        if not os.path.isdir(clf_dir):
-            os.mkdir(clf_dir)
-
+        clf_dir = os.path.join(self._folder, self._customer, clf_id)
+        make_dir(clf_dir)
         joblib.dump({"clfs": self._classifiers, "mlbs": self._mlbs},
                     os.path.join(clf_dir, "intent.model"))
