@@ -1,8 +1,10 @@
 """Transformers for sklearn pipeline"""
 
 import json
+import math
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.decomposition import TruncatedSVD
 
 from .preprocess import en_preprocessor, cn_preprocessor
 
@@ -31,3 +33,19 @@ class TextPreprocess(BaseEstimator, TransformerMixin):
             return [cn_preprocessor.process(x) for x in X]
         else:
             return [en_preprocessor.process(x) for x in X]
+
+
+class PercentSVD(TruncatedSVD):
+
+    def __init__(self, percent: float=1, algorithm="randomized", n_iter=5,
+                 random_state=None, tol=0.):
+        super().__init__(algorithm=algorithm, n_iter=n_iter,
+                         random_state=random_state, tol=tol)
+        self.percent = percent
+
+    def _calc_n_components(self, toatl_components: int):
+        return math.ceil(toatl_components * self.percent)
+
+    def fit_transform(self, X, y=None):
+        self.n_components = self._calc_n_components(X.shape[1])
+        return super().fit_transform(X, y)
