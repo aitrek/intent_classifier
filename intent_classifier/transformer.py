@@ -28,6 +28,6 @@ class TextPreprocess(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         if self.lang == "cn":
-            return [en_preprocessor.process(x) for x in X]
-        else:
             return [cn_preprocessor.process(x) for x in X]
+        else:
+            return [en_preprocessor.process(x) for x in X]
