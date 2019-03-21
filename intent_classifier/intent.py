@@ -29,7 +29,7 @@ DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
 class Intent:
 
     def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
-                 lang="en", ner=None):
+                 lang="en", ner=None, n_jobs=None):
         """
 
         Parameters
@@ -44,13 +44,20 @@ class Intent:
                 {'value': 'Allen', 'type': 'person', 'start': 0, 'end': 5},
                 {'value': 'cake', 'type': 'food', 'start': 11, 'end': 15}
             ]
+        n_jobs : n_jobs in GridSearchCV, int or None, optional (default=None)
+            Number of jobs to run in parallel.
+            ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
+            ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
+            for more details.
         """
         self._folder = folder
         self._customer = customer
         self._lang = lang
         self._ner = ner
+        self._n_jobs = n_jobs
         self._classifiers = {}
         self._mlbs = {}
+        self._reports = {}
 
     def fit(self, data_bunch: DataBunch):
         """
@@ -82,14 +89,15 @@ class Intent:
 
         make_choice_vect = np.vectorize(make_choice)
         for clf_name, label_set in get_intent_labels(data_bunch.intents).items():
-            # todo report
+
             if len(label_set) == 1:
                 self._classifiers[clf_name] = \
                     OneClassClassifier(list(label_set)[0])
+                self._reports[clf_name] = {"clf_type": "OneClassClassifier"}
             else:
                 choices = make_choice_vect(data_bunch.intents, label_set)
                 mlb = MultiLabelBinarizer(classes=list(label_set))
-                self._classifiers[clf_name] = self._fit(
+                search = self._fit(
                     X=pd.DataFrame({
                         "words": data_bunch.words[choices],
                         "contexts": [json.loads(c) if c else {}
@@ -97,7 +105,17 @@ class Intent:
                     y=mlb.fit_transform(
                         make_labels(data_bunch.intents[choices], label_set))
                 )
+
+                self._classifiers[clf_name] = search.best_estimator_
                 self._mlbs[clf_name] = mlb
+
+                self._reports[clf_name] = {
+                    "clf_type": "sklearn-classifier",
+                    "scoring": search.scoring,
+                    "cv": search.cv,
+                    "best_params": search.best_params_,
+                    "best_score": search.best_score_,
+                }
 
     def _fit(self, X: pd.DataFrame, y: np.array):
         """Fit classifier
@@ -165,7 +183,8 @@ class Intent:
             "clf__max_features": [None, "sqrt", "log2"],
             "clf__class_weight": ["balanced", "balanced_subsample"],
         }
-        search = GridSearchCV(estimator=pipeline, param_grid=params, cv=5)
+        search = GridSearchCV(estimator=pipeline, param_grid=params, cv=5,
+                              n_jobs=self._n_jobs)
         search.fit(X, y)
 
         return search
@@ -220,12 +239,6 @@ class Intent:
                         intent_labels.append(intent_label)
 
         return intent_labels
-
-    def report(self):
-        """
-        Create classifiers' reports and save them in self._folder/self._id.
-        """
-        pass
 
     def _check_id(self, id: str):
         """
@@ -297,5 +310,10 @@ class Intent:
 
         make_dir(clf_dir)
 
+        # save models
         joblib.dump({"clfs": self._classifiers, "mlbs": self._mlbs},
                     os.path.join(clf_dir, "intent.model"))
+
+        # save reports
+        with open(os.path.join(clf_dir, "report.txt"), "w") as f:
+            json.dump(self._reports, f, indent=4)
