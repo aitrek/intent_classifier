@@ -75,7 +75,7 @@ def load_from_mysql(configs: dict) -> DataBunch:
                      intents=np.array(intents, dtype=np.str))
 
 
-def load_from_csv(csv_path: str) -> DataBunch:
+def load_from_csv(csv_path: str, customer: str="common") -> DataBunch:
     """
     Load intent dataset from csv file, which has fields:
     words - user's words.
@@ -88,10 +88,13 @@ def load_from_csv(csv_path: str) -> DataBunch:
             String separated with ",", such as
             "news/sports/football,person/story", which means labels
             "news/sports/football" and "person/story".
+    customer - customer, default value "common" means it is common for
+        any customer.
 
     Parameters
     ----------
     csv_path: the path of the dataset file.
+    customer: the customer of the dataset.
 
     Returns
     -------
@@ -112,8 +115,10 @@ def load_from_csv(csv_path: str) -> DataBunch:
         words = []
         contexts = []
         intents = []
-        for word, context, intent_labels in csv_file:
+        for word, context, intent_labels, cust in csv_file:
             if not word and (not context or context.strip()=="{}"):
+                continue
+            if cust not in ("common", customer):
                 continue
             words.append(word)
             contexts.append(context) if context else context.append("{}")
