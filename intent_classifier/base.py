@@ -27,5 +27,5 @@ class OneClassClassifier:
     def __init__(self, intent: str):
         self._intent = intent
 
-    def predict(self, **kwargs):
+    def predict(self, X, **kwargs):
         return self._intent

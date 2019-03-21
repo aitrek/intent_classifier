@@ -214,7 +214,7 @@ class Intent:
                     else:
                         intent_label = intent + "/" + label
 
-                    if "root/" + intent_label in self._classifiers:
+                    if intent_label in self._classifiers:
                         intent_labels += self._predict(intent_label, X)
                     else:
                         intent_labels.append(intent_label)
