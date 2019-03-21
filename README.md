@@ -66,7 +66,6 @@ def load_from_xxx(xxx_params) -> DataBunch:
 ```
 
 ## Training  
-&nbsp;&nbsp;&nbsp;&nbsp;
 Load intent dataset, create an instance of Intent and then run fit the dataset.   
 ```python
 import os
@@ -92,7 +91,6 @@ optional to offer entity information in words.
 
 
 ## Save Models  
-&nbsp;&nbsp;&nbsp;&nbsp;
 After finishing the training, run dump() to save the models with name intent.model 
 and the report of the training with name report.txt in the same folder. 
 ```python
@@ -101,7 +99,6 @@ intent.dump()
 
 
 ## Load Models  
-&nbsp;&nbsp;&nbsp;&nbsp;
 Run load with specific clf_id or with default clf_id to load the most recent 
 models.
 ```python
