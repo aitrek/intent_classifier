@@ -8,7 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from typing import List
+from typing import List, Union
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
@@ -189,7 +189,7 @@ class Intent:
 
         return search
 
-    def predict(self, word: str="", context: dict=None) -> List[str]:
+    def predict(self, word: str="", context: Union[str, dict]=None) -> List[str]:
         """
 
         Parameters
@@ -202,7 +202,17 @@ class Intent:
         List of predicted labels.
 
         """
-        X = pd.DataFrame({"words": [word], "contexts": [context]})
+        if not context:
+            X = pd.DataFrame({"words": [word], "contexts": ["{}"]})
+        else:
+            if isinstance(context, str):
+                X = pd.DataFrame({"words": [word], "contexts": [context]})
+            elif isinstance(context, dict):
+                X = pd.DataFrame({"words": [word],
+                                  "contexts": [json.dumps(context)]})
+            else:
+                X = pd.DataFrame({"words": [word], "contexts": ["{}"]})
+
         return self._predict("root", X)
 
     def _predict(self, intent: str, X: pd.DataFrame) -> List[str]:
