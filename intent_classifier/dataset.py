@@ -157,25 +157,30 @@ def load_rules_from_mysql(configs: dict) -> RuleBunch:
 
     words_rules = []
     context_rules = []
+    intent_labels = []
 
     db = pymysql.connect(host=configs["host"], port=configs["port"],
                          user=configs["user"], password=configs["password"])
     cursor = db.cursor()
-    sql = "select words_rule, context_rule " \
+    sql = "select words_rule, context_rule, intent_label " \
           "from {db}.{table} " \
           "where in_use=1 and customer='{customer}'". \
         format(db=configs["db"], table=configs["table"],
                customer=configs["customer"])
     cursor.execute(sql)
-    for words_rule, context_rule in cursor.fetchall():
+    for words_rule, context_rule, intent_label in cursor.fetchall():
+        if not intent_label or not intent_label.strip():
+            continue
         if not words_rule and (not context_rule or context_rule.strip() == "{}"):
             continue
         words_rules.append(words_rule) if words_rule \
             else words_rules.append("")
         context_rules.append(context_rule) if context_rule \
             else context_rules.append({})
+        intent_labels.append([label.stip() for label in intent_label.split(",")])
 
     cursor.close()
     db.close()
 
-    return RuleBunch(words_rules=words_rules, context_rules=context_rules)
+    return RuleBunch(words_rules=words_rules, context_rules=context_rules,
+                     intent_labels=intent_labels)
