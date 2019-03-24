@@ -1,1 +1,1 @@
-from .intent_classifier import IntentClassifier
+from .intent_classifier import RuleClassifier, ModelClassifier, IntentClassifier
