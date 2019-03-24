@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from .base import DataBunch
+from .base import DatasetBunch, RuleBunch
 
 
-def load_from_mysql(configs: dict) -> DataBunch:
+def load_from_mysql(configs: dict) -> DatasetBunch:
     """
     Load intent dataset from mysql database.
 
@@ -70,12 +70,12 @@ def load_from_mysql(configs: dict) -> DataBunch:
     cursor.close()
     db.close()
 
-    return DataBunch(words=np.array(words, dtype=np.str),
-                     contexts=np.array(contexts, dtype=np.str),
-                     intents=np.array(intents, dtype=np.str))
+    return DatasetBunch(words=np.array(words, dtype=np.str),
+                        contexts=np.array(contexts, dtype=np.str),
+                        intents=np.array(intents, dtype=np.str))
 
 
-def load_from_csv(csv_path: str, customer: str="common") -> DataBunch:
+def load_from_csv(csv_path: str, customer: str="common") -> DatasetBunch:
     """
     Load intent dataset from csv file, which has fields:
     words - user's words.
@@ -124,6 +124,58 @@ def load_from_csv(csv_path: str, customer: str="common") -> DataBunch:
             contexts.append(context) if context else context.append("{}")
             intents.append(intent_labels)
 
-    return DataBunch(words=np.array(words, dtype=np.str),
-                     contexts=np.array(contexts, dtype=np.str),
-                     intents=np.array(intents, dtype=np.str))
+    return DatasetBunch(words=np.array(words, dtype=np.str),
+                        contexts=np.array(contexts, dtype=np.str),
+                        intents=np.array(intents, dtype=np.str))
+
+
+def load_rules_from_mysql(configs: dict) -> RuleBunch:
+    """
+    Load rules from mysql database.
+
+    Parameters
+    ----------
+    configs: Configs of mysql connnection, which includes keys:
+        "host" - host of database,
+        "port" - port of database
+        "user" - user of database,
+        "password" - password to login the database,
+        "db" - database name of the dataset,
+        "table" - table name of the dataset,
+        "charset" - charset of the dataset, default value "utf8",
+        "customer" - the customer's name.
+
+    Returns
+    -------
+    RuleBunch instance including words_rules and context_rules.
+
+    """
+    import pymysql
+
+    for key in ["host", "port", "user", "password", "db", "table", "customer"]:
+        assert key in configs, "mysql configs error!"
+
+    words_rules = []
+    context_rules = []
+
+    db = pymysql.connect(host=configs["host"], port=configs["port"],
+                         user=configs["user"], password=configs["password"])
+    cursor = db.cursor()
+    sql = "select words_rule, context_rule " \
+          "from {db}.{table} " \
+          "where in_use=1 and customer='{customer}'". \
+        format(db=configs["db"], table=configs["table"],
+               customer=configs["customer"])
+    cursor.execute(sql)
+    for words_rule, context_rule in cursor.fetchall():
+        if not words_rule and (not context_rule or context_rule.strip() == "{}"):
+            continue
+        words_rules.append(words_rule) if words_rule \
+            else words_rules.append("")
+        context_rules.append(context_rule) if context_rule \
+            else context_rules.append({})
+
+    cursor.close()
+    db.close()
+
+    return RuleBunch(words_rules=words_rules, context_rules=context_rules)

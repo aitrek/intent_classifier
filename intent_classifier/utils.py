@@ -12,7 +12,7 @@ def get_intent_labels(labels_data: np.array) -> Dict[str, Set[str]]:
     with diferent levels.
 
     Examples:
-        Intent labelss:
+        IntentClassifier labelss:
             [
                 "news/sports_news/football",
                 "news/sports_news/basketball",

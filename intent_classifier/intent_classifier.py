@@ -1,6 +1,7 @@
 """Class for intent operations - training, predict"""
 
 import os
+import re
 import json
 import datetime
 
@@ -17,7 +18,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from sklearn.ensemble import RandomForestClassifier
 
-from .base import DataBunch, OneClassClassifier
+from .base import DatasetBunch, RuleBunch, Classifier
 from .utils import get_intent_labels, make_dir
 from .vectorizer import TfidfVectorizerWithEntity
 from .transformer import TextPreprocess, PercentSVD
@@ -26,7 +27,78 @@ from .transformer import TextPreprocess, PercentSVD
 DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
 
 
-class Intent:
+class OneClassClassifier(Classifier):
+    """Classifier used for dataset which has only one class."""
+
+    def __init__(self, intent: str):
+        self._intent = intent
+
+    def predict(self, words: str="", context: Union[str, dict]=None) -> List[str]:
+        return [self._intent]
+
+
+class RuleClassifier(Classifier):
+    """Rule-based classifier"""
+
+    def __init__(self, rule_bunch: RuleBunch):
+        self._patterns = [re.compile(r) if r else None
+                          for r in rule_bunch.word_rules]
+        try:
+            self._context_rules = \
+                [json.loads(r) if r else {} for r in rule_bunch.context_rules] \
+                if rule_bunch.context_rules else []
+        except AttributeError:
+            self._context_rules = []
+        self._intent_labels = rule_bunch.intent_labels
+
+    def predict(self, words: str="", context: Union[str, dict]=None) -> List[str]:
+        """
+        Predict intent labels according to words patterns and comparision
+        between context and context_rule.
+
+        Parameters
+        ----------
+        words: user input
+        context: context information
+
+        Returns
+        -------
+        List of predicted labels or empty list if failed to the matches.
+
+        """
+        def context_match(context: dict, rule_context: dict) -> bool:
+            if not rule_context:
+                return True
+            else:
+                return False if not context else \
+                    all(rule_context.get(k) == v for k, v in context.items())
+
+        # make sure the context to be a dict
+        if not context:
+            context = {}
+        else:
+            if isinstance(context, str):
+                context = json.loads(context)
+
+        if not words and not context:
+            return []
+
+        intent_labels = []
+        for i, pattern in enumerate(self._patterns):
+            if not self._context_rules:
+                if pattern.match(words):
+                    for label in self._intent_labels[i]:
+                        intent_labels.append(label)
+            else:
+                if pattern.match(words) and \
+                      context_match(context, self._context_rules[i]):
+                    for label in self._intent_labels[i]:
+                        intent_labels.append(label)
+
+        return intent_labels
+
+
+class ModelClassifier(Classifier):
 
     def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
                  lang="en", ner=None, n_jobs=None):
@@ -59,7 +131,7 @@ class Intent:
         self._mlbs = {}
         self._reports = {}
 
-    def fit(self, data_bunch: DataBunch):
+    def fit(self, data_bunch: DatasetBunch):
         """
         Fit with GridSearchCV method to find the optimal parameters.
         Disassemble the intents in form of multi-levels to get sub-datasets
@@ -132,6 +204,8 @@ class Intent:
 
         """
         def has_context(contexts):
+            if not contexts:
+                return False
             for context in contexts:
                 if not context:
                     continue
@@ -189,13 +263,13 @@ class Intent:
 
         return search
 
-    def predict(self, word: str="", context: Union[str, dict]=None) -> List[str]:
+    def predict(self, words: str="", context: Union[str, dict]=None) -> List[str]:
         """
 
         Parameters
         ----------
-        word
-        context
+        words: user input
+        context: context information
 
         Returns
         -------
@@ -203,15 +277,15 @@ class Intent:
 
         """
         if not context:
-            X = pd.DataFrame({"words": [word], "contexts": ["{}"]})
+            X = pd.DataFrame({"words": [words], "contexts": ["{}"]})
         else:
             if isinstance(context, str):
-                X = pd.DataFrame({"words": [word], "contexts": [context]})
+                X = pd.DataFrame({"words": [words], "contexts": [context]})
             elif isinstance(context, dict):
-                X = pd.DataFrame({"words": [word],
+                X = pd.DataFrame({"words": [words],
                                   "contexts": [json.dumps(context)]})
             else:
-                X = pd.DataFrame({"words": [word], "contexts": ["{}"]})
+                X = pd.DataFrame({"words": [words], "contexts": ["{}"]})
 
         return self._predict("root", X)
 
@@ -256,7 +330,7 @@ class Intent:
 
         Parameters
         ----------
-        id: Intent id.
+        id: IntentClassifier id.
 
         Returns
         -------
@@ -327,3 +401,21 @@ class Intent:
         # save reports
         with open(os.path.join(clf_dir, "report.txt"), "w") as f:
             json.dump(self._reports, f, indent=4)
+
+
+class IntentClassifier(Classifier):
+
+    def __init__(self,
+                 rule_classifier: RuleClassifier=None,
+                 model_classifier: ModelClassifier=None):
+        assert rule_classifier is not None or model_classifier is not None
+        self._rule_classifier = rule_classifier
+        self._model_classifier = model_classifier
+
+    def predict(self, words: str="", context: Union[str, dict]=None) -> List[str]:
+        intent_labels = []
+        if self._rule_classifier:
+            intent_labels = self._rule_classifier.predict(words, context)
+        if not intent_labels:
+            intent_labels = self._model_classifier.predict(words, context)
+        return intent_labels
