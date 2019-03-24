@@ -5,7 +5,7 @@ import numpy as np
 from .base import DatasetBunch, RuleBunch
 
 
-def load_from_mysql(configs: dict) -> DatasetBunch:
+def load_intents_from_mysql(configs: dict) -> DatasetBunch:
     """
     Load intent dataset from mysql database.
 
@@ -75,7 +75,7 @@ def load_from_mysql(configs: dict) -> DatasetBunch:
                         intents=np.array(intents, dtype=np.str))
 
 
-def load_from_csv(csv_path: str, customer: str="common") -> DatasetBunch:
+def load_intents_from_csv(csv_path: str, customer: str= "common") -> DatasetBunch:
     """
     Load intent dataset from csv file, which has fields:
     words - user's words.
