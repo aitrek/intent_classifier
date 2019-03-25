@@ -1,4 +1,4 @@
-# An implementation of intent classifier for chatbot.
+# An Intent Classifier For Chatbot
 
 
 ## Introduction  
