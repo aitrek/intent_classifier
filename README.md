@@ -168,7 +168,7 @@ model_classifier.load(clf_id="20190321113421")  # if clf_id is None, the model
                                                 # with maximum id will be loaded
 ```
 
-## Create IntentCliffier
+## Create IntentClassifier
 ```python
 intent_classifier = IntentClassifier(rule_classifier=rule_classifier,
                                      model_classifier=model_classifier)
@@ -197,4 +197,4 @@ intent_labels = intent_classifier.predict(
 + jieba (optional, for Chinese tokenization)
 
 ## Installation  
-pip install -e git+https://github.com/aitrek/intent_classifier.git
+pip install -e git+https\://github.com/aitrek/intent_classifier.git
