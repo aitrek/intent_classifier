@@ -1,4 +1,4 @@
-An implementation of intent classifier based on sklearn for chatbot.
+# An implementation of intent classifier for chatbot.
 
 
 ## Introduction  
@@ -197,4 +197,4 @@ intent_labels = intent_classifier.predict(
 + jieba (optional, for Chinese tokenization)
 
 ## Installation  
-pip install -e git+https\://github.com/aitrek/intent_classifier.git
+pip install -e git+https://github.com/aitrek/intent_classifier.git
