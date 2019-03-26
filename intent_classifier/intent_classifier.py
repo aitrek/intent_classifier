@@ -204,7 +204,7 @@ class ModelClassifier(Classifier):
 
         """
         def has_context(contexts):
-            if not contexts:
+            if contexts.empty:
                 return False
             for context in contexts:
                 if not context:
