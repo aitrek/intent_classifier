@@ -305,22 +305,16 @@ class ModelClassifier(Classifier):
         """
         intent_labels = []
         if isinstance(self._classifiers[intent], OneClassClassifier):
-            intent_labels.append(
-                self._classifiers[intent].predict(X))
+            intent_labels += self._classifiers[intent].predict(X)
         else:
             for labels in self._mlbs[intent].inverse_transform(
                     self._classifiers[intent].predict(X)):
 
                 for label in labels:
-                    if intent == "root":
-                        intent_label = label
+                    if label in self._classifiers:
+                        intent_labels += self._predict(label, X)
                     else:
-                        intent_label = intent + "/" + label
-
-                    if intent_label in self._classifiers:
-                        intent_labels += self._predict(intent_label, X)
-                    else:
-                        intent_labels.append(intent_label)
+                        intent_labels.append(label)
 
         return intent_labels
 
