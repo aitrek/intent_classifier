@@ -44,11 +44,11 @@ multi-labels which means a user's words might have multi-intent.
 The intent dataset can be in any storage, like mysql database or local csv file. 
 Two functions to load dataset from mysql and csv file have been implemented 
 in dataset.py. They can be used simply by offering parameters, mysql connection 
-configure or csv file path.   
+configuration or csv file path.   
 &nbsp;&nbsp;&nbsp;&nbsp;
 If intent dataset is put in different storage, you could implement function 
 just like utils.load_from_mysql/load_from_csv. Just remember that the result 
-of the function should be an instance of DataBunch which confined the fields 
+of the function must be an instance of DataBunch which is confined the fields 
 of the dataset:  
 
 ```python
