@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="intent_classifier",
-    version="0.2.0",
+    version="0.2.1",
     description="An Intent Classifier For Chatbot",
     long_description=README,
     long_description_content_type="text/markdown",
