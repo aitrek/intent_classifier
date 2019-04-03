@@ -162,7 +162,7 @@ def load_rules_from_mysql(configs: dict) -> RuleBunch:
     db = pymysql.connect(host=configs["host"], port=configs["port"],
                          user=configs["user"], password=configs["password"])
     cursor = db.cursor()
-    sql = "select words_rule, context_rule, intent_label " \
+    sql = "select words_rule, context_rule, intent_labels " \
           "from {db}.{table} " \
           "where in_use=1 and customer='{customer}'". \
         format(db=configs["db"], table=configs["table"],

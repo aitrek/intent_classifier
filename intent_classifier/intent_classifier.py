@@ -42,7 +42,7 @@ class RuleClassifier(Classifier):
 
     def __init__(self, rule_bunch: RuleBunch):
         self._patterns = [re.compile(r) if r else None
-                          for r in rule_bunch.word_rules]
+                          for r in rule_bunch.words_rules]
         try:
             self._context_rules = \
                 [json.loads(r) if r else {} for r in rule_bunch.context_rules] \
