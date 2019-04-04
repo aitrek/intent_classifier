@@ -17,6 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 
 from .base import DatasetBunch, RuleBunch, Classifier
 from .utils import get_intent_labels, make_dir
@@ -220,7 +221,12 @@ class ModelClassifier(Classifier):
                 ("words2vect",
                  Pipeline([
                      ("text_preprocess", TextPreprocess(self._lang)),
-                     ("tfidf_vect", TfidfVectorizerWithEntity(ner=self._ner))
+                     ("tfidf_vect",
+                      TfidfVectorizerWithEntity(ner=self._ner)
+                      if self._lang != "cn" else
+                      TfidfVectorizerWithEntity(ner=self._ner,
+                                                token_pattern=r"(?u)\b\w+\b")
+                      )
                  ]),
 
                  "words"),
@@ -233,7 +239,12 @@ class ModelClassifier(Classifier):
                 ("words2vect",
                  Pipeline([
                      ("text_preprocess", TextPreprocess(self._lang)),
-                     ("tfidf_vect", TfidfVectorizerWithEntity(ner=self._ner))
+                     ("tfidf_vect",
+                      TfidfVectorizerWithEntity(ner=self._ner)
+                      if self._lang != "cn" else
+                      TfidfVectorizerWithEntity(ner=self._ner,
+                                                token_pattern=r"(?u)\b\w+\b")
+                      )
                  ]),
                  "words")
             ])
@@ -246,16 +257,21 @@ class ModelClassifier(Classifier):
             ("scaler", StandardScaler(with_mean=False)),
 
             # dimensionality reduction
-            ("svd", PercentSVD()),
+            # ("svd", PercentSVD()),
 
             # classifier
             ("clf", RandomForestClassifier())
+            # ("clf", MLPClassifier(max_iter=1000, hidden_layer_sizes=(50, 50)))
         ])
         params = {
-            "svd__percent": np.linspace(0.1, 1, 3),     # todo
+            # "svd__percent": np.linspace(0.1, 1, 10),     # todo
             "clf__n_estimators": range(5, 100, 5),
             "clf__max_features": [None, "sqrt", "log2"],
-            "clf__class_weight": ["balanced", "balanced_subsample"],
+            "clf__class_weight": ["balanced", "balanced_subsample", None],
+            # "clf__hidden_layer_sizes": [(n,) for n in range(10, 110, 10)],
+            # "clf__activation": ["identity", "logistic", "tanh", "relu"],
+            # "clf__solver": ["lbfgs", "sgd", "adam"],
+            # "clf__learning_rate": ["constant", "invscaling", "adaptive"]
         }
         search = GridSearchCV(estimator=pipeline, param_grid=params, cv=5,
                               n_jobs=self._n_jobs)
