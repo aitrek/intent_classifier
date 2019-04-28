@@ -210,8 +210,7 @@ class ModelClassifier(Classifier):
             vectorizer = ColumnTransformer([
                 # words to vectors
                 ("words2vect",
-                  TfidfVectorizer() if self._lang != "cn" else
-                  TfidfVectorizer(token_pattern=r"(?u)\b\w+\b"),
+                  TfidfVectorizer(token_pattern=r"(?u)(\{\w+\}|\w+)"),
                  "words"),
                 # contexts to vectors
                 ("contexts2vect", DictVectorizer(), "contexts")
@@ -220,8 +219,7 @@ class ModelClassifier(Classifier):
             vectorizer = ColumnTransformer([
                 # words to vectors
                 ("words2vect",
-                  TfidfVectorizer() if self._lang != "cn" else
-                  TfidfVectorizer(token_pattern=r"(?u)\b\w+\b"),
+                  TfidfVectorizer(token_pattern=r"(?u)(\{\w+\}|\w+)"),
                  "words")
             ])
 
