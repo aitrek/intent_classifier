@@ -5,7 +5,6 @@ import math
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import TruncatedSVD
-from ner import cn_ner, en_ner
 
 
 class Json2Dict(BaseEstimator, TransformerMixin):
