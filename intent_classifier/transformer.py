@@ -5,8 +5,7 @@ import math
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import TruncatedSVD
-
-from .preprocess import en_preprocessor, cn_preprocessor
+from ner import cn_ner, en_ner
 
 
 class Json2Dict(BaseEstimator, TransformerMixin):
@@ -17,22 +16,6 @@ class Json2Dict(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         return [json.loads(x) if x else {} for x in X]
-
-
-class TextPreprocess(BaseEstimator, TransformerMixin):
-    """Preprocess text"""
-
-    def __init__(self, lang: str="en"):
-        self.lang = lang
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        if self.lang == "cn":
-            return [cn_preprocessor.process(x) for x in X]
-        else:
-            return [en_preprocessor.process(x) for x in X]
 
 
 class PercentSVD(TruncatedSVD):

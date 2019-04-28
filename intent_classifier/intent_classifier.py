@@ -15,14 +15,13 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import StandardScaler, MultiLabelBinarizer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.neural_network import MLPClassifier
 
 from .base import DatasetBunch, RuleBunch, Classifier
 from .utils import get_intent_labels, make_dir
-from .vectorizer import TfidfVectorizerWithEntity
-from .transformer import TextPreprocess, PercentSVD
+from .transformer import PercentSVD
 
 
 DEFAULT_FOLDER = os.path.join(os.getcwd(), "models")
@@ -102,7 +101,7 @@ class RuleClassifier(Classifier):
 class ModelClassifier(Classifier):
 
     def __init__(self, folder: str=DEFAULT_FOLDER, customer: str="common",
-                 lang="en", ner=None, n_jobs=None):
+                 lang="en", n_jobs=None):
         """
 
         Parameters
@@ -110,13 +109,6 @@ class ModelClassifier(Classifier):
         folder: The folder to save the final models.
         customer: Name used to distinguish different customers.
         lang: Language, "en" for English or "cn" for Chinese.
-        ner: instance of named entity recognition.
-            Its output, taking "Allen like cake." for example,
-            should be a list in form:
-            [
-                {'value': 'Allen', 'type': 'person', 'start': 0, 'end': 5},
-                {'value': 'cake', 'type': 'food', 'start': 11, 'end': 15}
-            ]
         n_jobs : n_jobs in GridSearchCV, int or None, optional (default=None)
             Number of jobs to run in parallel.
             ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
@@ -126,7 +118,6 @@ class ModelClassifier(Classifier):
         self._folder = folder
         self._customer = customer
         self._lang = lang
-        self._ner = ner
         self._n_jobs = n_jobs
         self._classifiers = {}
         self._mlbs = {}
@@ -219,16 +210,8 @@ class ModelClassifier(Classifier):
             vectorizer = ColumnTransformer([
                 # words to vectors
                 ("words2vect",
-                 Pipeline([
-                     ("text_preprocess", TextPreprocess(self._lang)),
-                     ("tfidf_vect",
-                      TfidfVectorizerWithEntity(ner=self._ner)
-                      if self._lang != "cn" else
-                      TfidfVectorizerWithEntity(ner=self._ner,
-                                                token_pattern=r"(?u)\b\w+\b")
-                      )
-                 ]),
-
+                  TfidfVectorizer() if self._lang != "cn" else
+                  TfidfVectorizer(token_pattern=r"(?u)\b\w+\b"),
                  "words"),
                 # contexts to vectors
                 ("contexts2vect", DictVectorizer(), "contexts")
@@ -237,15 +220,8 @@ class ModelClassifier(Classifier):
             vectorizer = ColumnTransformer([
                 # words to vectors
                 ("words2vect",
-                 Pipeline([
-                     ("text_preprocess", TextPreprocess(self._lang)),
-                     ("tfidf_vect",
-                      TfidfVectorizerWithEntity(ner=self._ner)
-                      if self._lang != "cn" else
-                      TfidfVectorizerWithEntity(ner=self._ner,
-                                                token_pattern=r"(?u)\b\w+\b")
-                      )
-                 ]),
+                  TfidfVectorizer() if self._lang != "cn" else
+                  TfidfVectorizer(token_pattern=r"(?u)\b\w+\b"),
                  "words")
             ])
 
